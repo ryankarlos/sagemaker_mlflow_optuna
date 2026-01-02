@@ -34,6 +34,16 @@ Parameters:
     AllowedValues: ['true', 'false']
     Description: Whether to create Feature Store resources
 
+  SpaceInstanceType:
+    Type: String
+    Default: ml.t3.medium
+    AllowedValues:
+      - ml.t3.medium
+      - ml.t3.large
+      - ml.m5.large
+      - ml.c5.large
+    Description: Instance type for JupyterLab and Code Editor spaces (under $0.60/hr)
+
 Conditions:
   CreateFeatureStore: !Equals [!Ref EnableFeatureStore, 'true']
 
@@ -90,6 +100,31 @@ Resources:
       SourceSecurityGroupId: !Ref SageMakerSecurityGroup
 
   #############################################
+  # Lifecycle Configuration
+  #############################################
+
+  JupyterLabLifecycleConfig:
+    Type: AWS::SageMaker::StudioLifecycleConfig
+    Properties:
+      StudioLifecycleConfigName: !Sub '${ProjectName}-jupyter-setup'
+      StudioLifecycleConfigAppType: JupyterLab
+      StudioLifecycleConfigContent:
+        Fn::Base64: |
+          #!/bin/bash
+          set -e
+          echo "Starting lifecycle configuration..."
+          cd /home/sagemaker-user
+          
+          # Install project dependencies
+          pip install --upgrade pip
+          pip install optuna mlflow 
+          
+          echo "Lifecycle configuration complete!"
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  #############################################
   # IAM Role
   #############################################
 
@@ -106,24 +141,9 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
-        - arn:aws:iam::aws:policy/AmazonSageMakerFeatureStoreAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess
       Policies:
-        - PolicyName: S3Access
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:DeleteObject
-                  - s3:ListBucket
-                  - s3:GetBucketLocation
-                  - s3:GetBucketAcl
-                  - s3:PutObjectAcl
-                Resource:
-                  - !Sub 'arn:aws:s3:::${MainBucket}'
-                  - !Sub 'arn:aws:s3:::${MainBucket}/*'
         - PolicyName: FeatureStoreAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -136,20 +156,6 @@ Resources:
                   - sagemaker:BatchGetRecord
                   - sagemaker:DeleteRecord
                 Resource: '*'
-        - PolicyName: GlueAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - glue:CreateTable
-                  - glue:DeleteTable
-                  - glue:GetTable
-                  - glue:GetTables
-                  - glue:UpdateTable
-                  - glue:GetDatabase
-                  - glue:CreateDatabase
-                Resource: '*'
         - PolicyName: LineageAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -161,6 +167,41 @@ Resources:
                   - sagemaker:*Action*
                   - sagemaker:*Association*
                   - sagemaker:QueryLineage
+                Resource: '*'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  #############################################
+  # Space Execution Role (Full Permissions)
+  #############################################
+
+  SpaceExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-space-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sagemaker.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
                 Resource: '*'
       Tags:
         - Key: Project
@@ -185,6 +226,10 @@ Resources:
         SharingSettings:
           NotebookOutputOption: Allowed
           S3OutputPath: !Sub 's3://${MainBucket}/sharing'
+      DefaultSpaceSettings:
+        ExecutionRole: !GetAtt SageMakerExecutionRole.Arn
+        SecurityGroups:
+          - !Ref SageMakerSecurityGroup
       DomainSettings:
         DockerSettings:
           EnableDockerAccess: ENABLED
@@ -217,7 +262,10 @@ Resources:
 
   SageMakerSpace:
     Type: AWS::SageMaker::Space
-    DependsOn: SageMakerUserProfile
+    DependsOn: 
+      - SageMakerUserProfile
+      - JupyterLabLifecycleConfig
+      - SpaceExecutionRole
     Properties:
       DomainId: !Ref SageMakerDomain
       SpaceName: !Sub '${UserProfileName}-space'
@@ -229,7 +277,14 @@ Resources:
         AppType: JupyterLab
         SpaceStorageSettings:
           EbsStorageSettings:
-            EbsVolumeSizeInGb: 50
+            EbsVolumeSizeInGb: 20
+        JupyterLabAppSettings:
+          DefaultResourceSpec:
+            InstanceType: !Ref SpaceInstanceType
+            LifecycleConfigArn: !GetAtt JupyterLabLifecycleConfig.StudioLifecycleConfigArn
+        CodeEditorAppSettings:
+          DefaultResourceSpec:
+            InstanceType: !Ref SpaceInstanceType
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -390,6 +445,12 @@ Outputs:
     Value: !GetAtt SageMakerExecutionRole.Arn
     Export:
       Name: !Sub '${ProjectName}-SageMakerRoleArn'
+
+  SpaceExecutionRoleArn:
+    Description: Space execution role ARN (full S3/ECR permissions)
+    Value: !GetAtt SpaceExecutionRole.Arn
+    Export:
+      Name: !Sub '${ProjectName}-SpaceRoleArn'
 
   UserFeaturesGroupName:
     Condition: CreateFeatureStore
