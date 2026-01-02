@@ -1,0 +1,28 @@
+version: 1
+
+formatters:
+  simple_formatter:
+    format: "%(asctime)s %(name)s: %(message)s"
+  extended_formatter:
+    format: "%(asctime)s - %(name)s - %(module)s - %(levelname)s: %(message)s"
+
+handlers:
+  console_handler:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: extended_formatter
+
+root:
+  handlers: [console_handler]
+  level: INFO
+
+loggers:
+  training:
+    handlers: [console_handler]
+    level: INFO
+    propagate: False
+
+  deployment:
+    handlers: [console_handler]
+    level: INFO
+    propagate: False

@@ -1,0 +1,69 @@
+site_name: SageMaker MLflow Optuna
+site_description: SageMaker MLflow Optuna pipeline for hyperparameter optimization
+site_author: MLOps Team
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+  - User Guide:
+      - Pipeline Overview: guide/pipeline-overview.md
+      - Running Pipelines: guide/running-pipelines.md
+      - Optuna Integration: guide/optuna.md
+  - Architecture:
+      - Design: architecture/design.md
+  - Operations:
+      - Runbook: operations/runbook.md
+      - Troubleshooting: operations/troubleshooting.md
+  - API Reference:
+      - Steps: api/steps.md
+      - Utilities: api/utilities.md
