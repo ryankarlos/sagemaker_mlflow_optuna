@@ -24,9 +24,17 @@ format:
 generate-data:
 	uv run python -m data.simulate_gambling_data
 
+# Generate data and ingest to Feature Store
+generate-data-fs:
+	uv run python -m data.simulate_gambling_data --ingest --n_users 1000 --n_games 50
+
 # Run FM Optuna pipeline (local mode)
 pipeline-fm:
 	uv run python -m pipelines.fm_optuna_train --local --n_users 1000 --n_games 50 --max_trials 10
+
+# Run FM Optuna pipeline with Feature Store ingestion
+pipeline-fm-fs:
+	uv run python -m pipelines.fm_optuna_train --local --n_users 1000 --n_games 50 --max_trials 10 --ingest_features
 
 # Run FM Optuna pipeline (full)
 pipeline-fm-full:
@@ -60,15 +68,17 @@ all: setup lint test
 # Help
 help:
 	@echo "Available targets:"
-	@echo "  setup          - Install dependencies"
-	@echo "  test           - Run tests with coverage"
-	@echo "  lint           - Run linting"
-	@echo "  format         - Format code"
-	@echo "  generate-data  - Generate sample gambling data"
-	@echo "  pipeline-fm    - Run FM Optuna pipeline (quick local test)"
+	@echo "  setup            - Install dependencies"
+	@echo "  test             - Run tests with coverage"
+	@echo "  lint             - Run linting"
+	@echo "  format           - Format code"
+	@echo "  generate-data    - Generate sample gambling data"
+	@echo "  generate-data-fs - Generate data and ingest to Feature Store"
+	@echo "  pipeline-fm      - Run FM Optuna pipeline (quick local test)"
+	@echo "  pipeline-fm-fs   - Run FM pipeline with Feature Store ingestion"
 	@echo "  pipeline-fm-full - Run FM Optuna pipeline (full local)"
-	@echo "  mlflow-ui      - Start MLflow UI"
-	@echo "  docs-build     - Build documentation"
-	@echo "  docs-serve     - Serve documentation locally"
-	@echo "  clean          - Clean artifacts"
-	@echo "  all            - Full CI/CD simulation"
+	@echo "  mlflow-ui        - Start MLflow UI"
+	@echo "  docs-build       - Build documentation"
+	@echo "  docs-serve       - Serve documentation locally"
+	@echo "  clean            - Clean artifacts"
+	@echo "  all              - Full CI/CD simulation"

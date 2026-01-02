@@ -10,6 +10,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Dict
 
+import boto3
 import mlflow
 import numpy as np
 import optuna
@@ -25,6 +26,18 @@ logging.basicConfig(level=logging.INFO)
 optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
 
 
+def get_aws_account_id() -> str:
+    """Get AWS account ID using STS."""
+    sts = boto3.client("sts")
+    return sts.get_caller_identity()["Account"]
+
+
+def get_aws_region() -> str:
+    """Get current AWS region."""
+    session = boto3.session.Session()
+    return session.region_name or "us-east-1"
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="FM Optuna Training Pipeline")
     parser.add_argument("--n_users", type=int, default=5000)
@@ -36,6 +49,8 @@ def parse_args():
     parser.add_argument("--experiment_name", type=str, default="fm-gambling-optuna")
     parser.add_argument("--local", action="store_true", help="Use local FM simulator")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--ingest_features", action="store_true", help="Ingest to Feature Store")
+    parser.add_argument("--project_name", type=str, default="fm-gambling-recommender")
     return parser.parse_args()
 
 
@@ -62,6 +77,8 @@ def prepare_data(
     n_days: int,
     train_days: int,
     seed: int,
+    ingest_features: bool = False,
+    project_name: str = "fm-gambling-recommender",
 ) -> Dict[str, Any]:
     """Generate and prepare data for training."""
     logger.info("Generating gambling dataset...")
@@ -74,6 +91,27 @@ def prepare_data(
     )
 
     logger.info(f"Generated {len(users)} users, {len(games)} games, {len(interactions)} interactions")
+
+    # Ingest to Feature Store if requested
+    if ingest_features:
+        logger.info("Ingesting features to Feature Store...")
+        from utils.feature_store import FeatureStoreManager
+        
+        fs_manager = FeatureStoreManager(project_name=project_name)
+        logger.info(f"AWS Account: {fs_manager.account_id}, Region: {fs_manager.region}")
+        
+        # Check feature group status
+        fg_status = fs_manager.describe_feature_groups()
+        for name, status in fg_status.items():
+            logger.info(f"  {name}: {status['status']}")
+        
+        # Only ingest if feature groups exist
+        all_exist = all(s.get("status") == "Created" for s in fg_status.values())
+        if all_exist:
+            fs_manager.ingest_all_features(users, games, interactions, wait=True)
+            logger.info("Feature Store ingestion complete!")
+        else:
+            logger.warning("Some feature groups not found, skipping ingestion")
 
     train_df, valid_df = split_by_date(interactions, train_days)
     logger.info(f"Train: {len(train_df)}, Validation: {len(valid_df)}")
@@ -161,6 +199,11 @@ def early_stopping_callback(study: optuna.Study, trial: optuna.FrozenTrial, roun
 
 def main():
     args = parse_args()
+    
+    # Get AWS info
+    account_id = get_aws_account_id()
+    region = get_aws_region()
+    logger.info(f"AWS Account: {account_id}, Region: {region}")
 
     data = prepare_data(
         n_users=args.n_users,
@@ -168,6 +211,8 @@ def main():
         n_days=args.n_days,
         train_days=args.train_days,
         seed=args.seed,
+        ingest_features=args.ingest_features,
+        project_name=args.project_name,
     )
 
     mlflow.set_experiment(args.experiment_name)
@@ -181,6 +226,9 @@ def main():
             "train_days": args.train_days,
             "max_trials": args.max_trials,
             "use_local": args.local,
+            "aws_account_id": account_id,
+            "aws_region": region,
+            "ingest_features": args.ingest_features,
         })
 
         study_name = f"fm_gambling_{current_time}"

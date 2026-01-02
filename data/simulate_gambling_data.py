@@ -120,9 +120,60 @@ def generate_gambling_dataset(
     return users, games, interactions, fm_features
 
 
+def ingest_to_feature_store(
+    users: pd.DataFrame,
+    games: pd.DataFrame,
+    interactions: pd.DataFrame,
+    project_name: str = "fm-gambling-recommender",
+) -> None:
+    """
+    Ingest generated data into SageMaker Feature Store.
+    
+    Parameters
+    ----------
+    users : pd.DataFrame
+        User features
+    games : pd.DataFrame
+        Game features
+    interactions : pd.DataFrame
+        Interaction features
+    project_name : str
+        Project name for feature group naming
+    """
+    from utils.feature_store import FeatureStoreManager
+    
+    fs_manager = FeatureStoreManager(project_name=project_name)
+    
+    print(f"AWS Account: {fs_manager.account_id}")
+    print(f"Region: {fs_manager.region}")
+    print(f"Feature Groups: {list(fs_manager.describe_feature_groups().keys())}")
+    
+    fs_manager.ingest_all_features(users, games, interactions)
+    print("Feature Store ingestion complete!")
+
+
 if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Generate gambling dataset")
+    parser.add_argument("--n_users", type=int, default=1000)
+    parser.add_argument("--n_games", type=int, default=50)
+    parser.add_argument("--n_days", type=int, default=90)
+    parser.add_argument("--avg_sessions", type=float, default=20)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--ingest", action="store_true", help="Ingest to Feature Store")
+    parser.add_argument("--project", type=str, default="fm-gambling-recommender")
+    args = parser.parse_args()
+    
     users, games, interactions, fm_features = generate_gambling_dataset(
-        n_users=1000, n_games=50, n_days=90, avg_sessions_per_user=20
+        n_users=args.n_users,
+        n_games=args.n_games,
+        n_days=args.n_days,
+        avg_sessions_per_user=args.avg_sessions,
+        seed=args.seed,
     )
     print(f"Users: {len(users)}, Games: {len(games)}, Interactions: {len(interactions)}")
     print(interactions.head())
+    
+    if args.ingest:
+        ingest_to_feature_store(users, games, interactions, args.project)
