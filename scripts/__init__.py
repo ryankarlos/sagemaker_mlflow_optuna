@@ -1,25 +1,23 @@
-"""
-Scripts module for FM-based gambling recommendation pipeline.
+"""FM Gambling Recommender - SageMaker FM utilities with MLflow & Optuna support."""
 
-Contains encoding, training, and evaluation components.
-"""
-
-from scripts.fm_encoding import FMEncoder, SafeLabelEncoder, create_user_item_matrix
-from scripts.factorization_machines import (
-    FactorizationMachinesTrainer,
-    LocalFMSimulator,
-    get_fm_hyperparameter_space,
+from scripts.fm_sagemaker import (
+    write_to_s3,
+    train_fm_model,
+    deploy_fm_endpoint,
+    predict,
 )
-from scripts.metrics import calculate_rmse, calculate_mae, get_ndcg_scores
+from scripts.simulate_gambling_data import (
+    generate_demo_data,
+    generate_multi_brand_demo,
+    BRANDS,
+)
 
 __all__ = [
-    "FMEncoder",
-    "SafeLabelEncoder",
-    "create_user_item_matrix",
-    "FactorizationMachinesTrainer",
-    "LocalFMSimulator",
-    "get_fm_hyperparameter_space",
-    "calculate_rmse",
-    "calculate_mae",
-    "get_ndcg_scores",
+    "write_to_s3",
+    "train_fm_model",
+    "deploy_fm_endpoint",
+    "predict",
+    "generate_demo_data",
+    "generate_multi_brand_demo",
+    "BRANDS",
 ]

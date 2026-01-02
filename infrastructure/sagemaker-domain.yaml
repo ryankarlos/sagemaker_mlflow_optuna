@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  SageMaker AI Domain with S3 and Feature Store for FM Gambling Recommendation Pipeline.
+  SageMaker AI Domain with S3 and MLflow for FM Gambling Recommendation Pipeline.
   Supports IAM user authentication.
 
 Parameters:
@@ -28,12 +28,6 @@ Parameters:
     Type: List<AWS::EC2::Subnet::Id>
     Description: Subnets for SageMaker Domain (private subnets recommended)
 
-  EnableFeatureStore:
-    Type: String
-    Default: 'true'
-    AllowedValues: ['true', 'false']
-    Description: Whether to create Feature Store resources
-
   SpaceInstanceType:
     Type: String
     Default: ml.t3.medium
@@ -43,9 +37,6 @@ Parameters:
       - ml.m5.large
       - ml.c5.large
     Description: Instance type for JupyterLab and Code Editor spaces (under $0.60/hr)
-
-Conditions:
-  CreateFeatureStore: !Equals [!Ref EnableFeatureStore, 'true']
 
 Resources:
   #############################################
@@ -144,29 +135,13 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess
       Policies:
-        - PolicyName: FeatureStoreAccess
+        - PolicyName: MLflowAccess
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - sagemaker:*FeatureGroup*
-                  - sagemaker:GetRecord
-                  - sagemaker:PutRecord
-                  - sagemaker:BatchGetRecord
-                  - sagemaker:DeleteRecord
-                Resource: '*'
-        - PolicyName: LineageAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - sagemaker:*Artifact*
-                  - sagemaker:*Context*
-                  - sagemaker:*Action*
-                  - sagemaker:*Association*
-                  - sagemaker:QueryLineage
+                  - sagemaker-mlflow:*
                 Resource: '*'
       Tags:
         - Key: Project
@@ -202,6 +177,14 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                   - logs:DescribeLogStreams
+                Resource: '*'
+        - PolicyName: MLflowAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sagemaker-mlflow:*
                 Resource: '*'
       Tags:
         - Key: Project
@@ -290,118 +273,23 @@ Resources:
           Value: !Ref ProjectName
 
   #############################################
-  # Feature Store - User Features
+  # MLflow Tracking Server
   #############################################
 
-  UserFeaturesGroup:
-    Type: AWS::SageMaker::FeatureGroup
-    Condition: CreateFeatureStore
+  MLflowTrackingServer:
+    Type: AWS::SageMaker::MlflowTrackingServer
+    DependsOn: SageMakerDomain
     Properties:
-      FeatureGroupName: !Sub '${ProjectName}-user-features'
-      RecordIdentifierFeatureName: user_id
-      EventTimeFeatureName: event_time
-      OnlineStoreConfig:
-        EnableOnlineStore: true
-      OfflineStoreConfig:
-        S3StorageConfig:
-          S3Uri: !Sub 's3://${MainBucket}/feature-store/user-features'
-        DisableGlueTableCreation: false
-      FeatureDefinitions:
-        - FeatureName: user_id
-          FeatureType: String
-        - FeatureName: event_time
-          FeatureType: Fractional
-        - FeatureName: vip_tier
-          FeatureType: String
-        - FeatureName: region
-          FeatureType: String
-        - FeatureName: age_group
-          FeatureType: String
-        - FeatureName: total_sessions
-          FeatureType: Integral
-        - FeatureName: avg_bet_amount
-          FeatureType: Fractional
-        - FeatureName: favorite_game_type
-          FeatureType: String
+      TrackingServerName: !Sub '${ProjectName}-${Environment}-mlflow'
+      ArtifactStoreUri: !Sub 's3://${MainBucket}/mlflow'
       RoleArn: !GetAtt SageMakerExecutionRole.Arn
-      Description: User features for FM model
+      TrackingServerSize: Small
+      AutomaticModelRegistration: true
       Tags:
         - Key: Project
           Value: !Ref ProjectName
-
-  #############################################
-  # Feature Store - Game Features
-  #############################################
-
-  GameFeaturesGroup:
-    Type: AWS::SageMaker::FeatureGroup
-    Condition: CreateFeatureStore
-    Properties:
-      FeatureGroupName: !Sub '${ProjectName}-game-features'
-      RecordIdentifierFeatureName: game_id
-      EventTimeFeatureName: event_time
-      OnlineStoreConfig:
-        EnableOnlineStore: true
-      OfflineStoreConfig:
-        S3StorageConfig:
-          S3Uri: !Sub 's3://${MainBucket}/feature-store/game-features'
-        DisableGlueTableCreation: false
-      FeatureDefinitions:
-        - FeatureName: game_id
-          FeatureType: String
-        - FeatureName: event_time
-          FeatureType: Fractional
-        - FeatureName: game_type
-          FeatureType: String
-        - FeatureName: rtp
-          FeatureType: Fractional
-        - FeatureName: volatility
-          FeatureType: String
-        - FeatureName: min_bet
-          FeatureType: Fractional
-        - FeatureName: max_bet
-          FeatureType: Fractional
-      RoleArn: !GetAtt SageMakerExecutionRole.Arn
-      Description: Game features for FM model
-      Tags:
-        - Key: Project
-          Value: !Ref ProjectName
-
-  #############################################
-  # Feature Store - Interaction Features
-  #############################################
-
-  InteractionFeaturesGroup:
-    Type: AWS::SageMaker::FeatureGroup
-    Condition: CreateFeatureStore
-    Properties:
-      FeatureGroupName: !Sub '${ProjectName}-interaction-features'
-      RecordIdentifierFeatureName: interaction_id
-      EventTimeFeatureName: event_time
-      OnlineStoreConfig:
-        EnableOnlineStore: true
-      OfflineStoreConfig:
-        S3StorageConfig:
-          S3Uri: !Sub 's3://${MainBucket}/feature-store/interaction-features'
-        DisableGlueTableCreation: false
-      FeatureDefinitions:
-        - FeatureName: interaction_id
-          FeatureType: String
-        - FeatureName: event_time
-          FeatureType: Fractional
-        - FeatureName: user_id
-          FeatureType: String
-        - FeatureName: game_id
-          FeatureType: String
-        - FeatureName: bet_qty
-          FeatureType: Integral
-        - FeatureName: total_stake
-          FeatureType: Fractional
-      RoleArn: !GetAtt SageMakerExecutionRole.Arn
-      Description: Interaction features for FM training
-      Tags:
-        - Key: Project
-          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
 
 Outputs:
   DomainId:
@@ -452,22 +340,6 @@ Outputs:
     Export:
       Name: !Sub '${ProjectName}-SpaceRoleArn'
 
-  UserFeaturesGroupName:
-    Condition: CreateFeatureStore
-    Description: User features Feature Group
-    Value: !Ref UserFeaturesGroup
-
-  GameFeaturesGroupName:
-    Condition: CreateFeatureStore
-    Description: Game features Feature Group
-    Value: !Ref GameFeaturesGroup
-
-  InteractionFeaturesGroupName:
-    Condition: CreateFeatureStore
-    Description: Interaction features Feature Group
-    Value: !Ref InteractionFeaturesGroup
-
-  # S3 Paths for reference
   DataPath:
     Description: S3 path for training data
     Value: !Sub 's3://${MainBucket}/data'
@@ -476,10 +348,12 @@ Outputs:
     Description: S3 path for ML artifacts
     Value: !Sub 's3://${MainBucket}/artifacts'
 
-  FeatureStorePath:
-    Description: S3 path for Feature Store
-    Value: !Sub 's3://${MainBucket}/feature-store'
-
   MLflowPath:
     Description: S3 path for MLflow artifacts
     Value: !Sub 's3://${MainBucket}/mlflow'
+
+  MLflowTrackingServerArn:
+    Description: MLflow Tracking Server ARN
+    Value: !GetAtt MLflowTrackingServer.TrackingServerArn
+    Export:
+      Name: !Sub '${ProjectName}-MLflowArn'
