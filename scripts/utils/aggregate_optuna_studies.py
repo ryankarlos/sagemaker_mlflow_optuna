@@ -8,8 +8,8 @@ combines them into a single database for analysis.
 import logging
 from pathlib import Path
 
-from utils.mlflow_helpers import download_artifacts_across_runs
-from utils.optuna_helpers import copy_all_studies_to_new_file
+from scripts.utils.mlflow_helpers import download_artifacts_across_runs
+from scripts.utils.optuna_helpers import copy_all_studies_to_new_file
 
 logger = logging.getLogger(__name__)
 

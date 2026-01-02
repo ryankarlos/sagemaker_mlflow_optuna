@@ -13,12 +13,52 @@ from scipy.sparse import csr_matrix, hstack, lil_matrix
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
 
+class SafeLabelEncoder:
+    """LabelEncoder that handles unseen labels by assigning them to a special index."""
+    
+    def __init__(self):
+        self.encoder = LabelEncoder()
+        self.classes_ = None
+        self._unknown_index = None
+    
+    def fit(self, y):
+        self.encoder.fit(y)
+        self.classes_ = self.encoder.classes_
+        # Unknown labels will be mapped to the last index + 1
+        self._unknown_index = len(self.classes_)
+        return self
+    
+    def transform(self, y):
+        """Transform labels, mapping unseen labels to unknown index."""
+        y = np.asarray(y)
+        # Create a mask for known labels
+        known_mask = np.isin(y, self.classes_)
+        
+        # Initialize result with unknown index
+        result = np.full(len(y), self._unknown_index, dtype=int)
+        
+        # Transform known labels
+        if known_mask.any():
+            result[known_mask] = self.encoder.transform(y[known_mask])
+        
+        return result
+    
+    def fit_transform(self, y):
+        self.fit(y)
+        return self.encoder.transform(y)  # All labels are known during fit
+    
+    @property
+    def n_classes(self):
+        """Number of classes including unknown."""
+        return len(self.classes_) + 1  # +1 for unknown
+
+
 class FMEncoder:
     """Encoder for Factorization Machines features."""
 
     def __init__(self):
-        self.user_encoder = LabelEncoder()
-        self.game_encoder = LabelEncoder()
+        self.user_encoder = SafeLabelEncoder()
+        self.game_encoder = SafeLabelEncoder()
         self.categorical_encoders: Dict[str, OneHotEncoder] = {}
         self.n_users = 0
         self.n_games = 0
@@ -27,8 +67,9 @@ class FMEncoder:
         """Fit encoders on training data."""
         self.user_encoder.fit(df["user_id"])
         self.game_encoder.fit(df["game_id"])
-        self.n_users = len(self.user_encoder.classes_)
-        self.n_games = len(self.game_encoder.classes_)
+        # Include +1 for unknown users/games
+        self.n_users = self.user_encoder.n_classes
+        self.n_games = self.game_encoder.n_classes
 
         if categorical_cols:
             for col in categorical_cols:
@@ -47,12 +88,12 @@ class FMEncoder:
         """Transform data to FM-compatible sparse format."""
         n_samples = len(df)
 
-        # User one-hot encoding
+        # User one-hot encoding (handles unseen users)
         user_indices = self.user_encoder.transform(df["user_id"])
         user_matrix = lil_matrix((n_samples, self.n_users))
         user_matrix[np.arange(n_samples), user_indices] = 1
 
-        # Game one-hot encoding
+        # Game one-hot encoding (handles unseen games)
         game_indices = self.game_encoder.transform(df["game_id"])
         game_matrix = lil_matrix((n_samples, self.n_games))
         game_matrix[np.arange(n_samples), game_indices] = 1

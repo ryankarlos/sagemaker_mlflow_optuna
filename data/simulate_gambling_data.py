@@ -140,7 +140,7 @@ def ingest_to_feature_store(
     project_name : str
         Project name for feature group naming
     """
-    from utils.feature_store import FeatureStoreManager
+    from scripts.utils.feature_store import FeatureStoreManager
     
     fs_manager = FeatureStoreManager(project_name=project_name)
     
