@@ -91,21 +91,3 @@ def execute_study_agg_pipeline(
     )
 
     print(f"Aggregated studies saved to {local_folder}/{optuna_target_db}")
-
-
-if __name__ == "__main__":
-    # Aggregate studies
-    execute_study_agg_pipeline(
-        experiment_name=experiment_name,
-        optuna_target_db="all_fm_studies.db",
-        local_folder="results",
-    )
-
-    # Load aggregated study
-    study = optuna.load_study(
-        study_name="fm_gambling",
-        storage="sqlite:///results/all_fm_studies.db"
-    )
-
-    print(f"Best RMSE: {-study.best_value:.4f}")
-    print(f"Best params: {study.best_params}")

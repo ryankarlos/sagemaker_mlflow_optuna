@@ -23,8 +23,4 @@ sudo apt-get -y update
 VERSION_STRING=5:20.10.24~3-0~ubuntu-jammy
 sudo apt-get install docker-ce-cli=$VERSION_STRING docker-compose-plugin -y
 
-# Validate Docker installation
-docker version
 
-
-echo "Setup complete!"
