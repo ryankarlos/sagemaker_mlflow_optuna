@@ -125,34 +125,6 @@ def generate_category_data(
     return df
 
 
-def generate_all_categories(
-    n_rows_per_category: int = 1000,
-    categories: Optional[List[str]] = None,
-    seed: int = 42,
-) -> pd.DataFrame:
-    """Generate combined dataset for all (or specified) categories."""
-    if categories is None:
-        categories = list(PRODUCT_CATEGORIES.keys())
-    
-    dfs = []
-    for i, cat in enumerate(categories):
-        df = generate_category_data(cat, n_rows_per_category, seed=seed + i)
-        dfs.append(df)
-    
-    return pd.concat(dfs, ignore_index=True)
-
-
-def get_category_datasets(
-    n_rows_per_category: int = 1000,
-    seed: int = 42,
-) -> Dict[str, pd.DataFrame]:
-    """Return dict of DataFrames, one per category (for multi-model training)."""
-    return {
-        cat: generate_category_data(cat, n_rows_per_category, seed=seed + i)
-        for i, cat in enumerate(PRODUCT_CATEGORIES.keys())
-    }
-
-
 def prepare_features(
     df: pd.DataFrame,
     test_size: float = 0.25,
@@ -174,23 +146,3 @@ def prepare_features(
     
     return train_test_split(X, y, test_size=test_size, random_state=seed)
 
-
-if __name__ == "__main__":
-    # Demo: generate and show stats per category
-    datasets = get_category_datasets(n_rows_per_category=1000)
-    
-    print("Electronics Sales Dataset Generator")
-    print("=" * 50)
-    
-    for cat, df in datasets.items():
-        print(f"\n{cat.upper()}")
-        print(f"  Rows: {len(df)}")
-        print(f"  Features: {len(df.columns) - 3}")  # exclude date, category, target
-        print(f"  Units sold - Mean: {df['units_sold'].mean():.0f}, Std: {df['units_sold'].std():.0f}")
-        
-        # Show correlations
-        numeric = df.select_dtypes(include=[np.number])
-        corr = numeric.corr()["units_sold"].drop("units_sold").sort_values()
-        print(f"  Top correlations:")
-        for feat in list(corr.index[-3:])[::-1]:
-            print(f"    {feat}: {corr[feat]:.3f}")
