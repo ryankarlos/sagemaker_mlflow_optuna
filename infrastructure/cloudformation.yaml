@@ -1,24 +1,21 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  SageMaker AI Domain with S3 and MLflow for FM Gambling Recommendation Pipeline.
+  SageMaker AI Domain with S3 and MLflow for ML training pipelines.
   Supports IAM user authentication.
 
 Parameters:
   ProjectName:
     Type: String
-    Default: fm-gambling-recommender
+    Default: sm-mlflow-optuna
     Description: Name prefix for all resources
 
-  Environment:
+  BucketName:
     Type: String
-    Default: dev
-    AllowedValues: [dev, staging, prod]
-    Description: Deployment environment
+    Description: S3 bucket name (required)
 
   UserProfileName:
     Type: String
-    Default: ryan
-    Description: Name for the SageMaker user profile
+    Description: Name for the SageMaker user profile (required)
 
   VpcId:
     Type: AWS::EC2::VPC::Id
@@ -35,12 +32,22 @@ Parameters:
       - ml.t3.medium
       - ml.t3.large
       - ml.m5.large
+      - ml.m5.xlarge
       - ml.c5.large
-    Description: Instance type for JupyterLab and Code Editor spaces (under $0.60/hr)
+    Description: Instance type for JupyterLab and Code Editor spaces
+
+  MLflowServerSize:
+    Type: String
+    Default: Small
+    AllowedValues:
+      - Small
+      - Medium
+      - Large
+    Description: Size of the MLflow tracking server
 
 Resources:
   #############################################
-  # S3 Bucket (Single bucket for all data)
+  # S3 Bucket
   #############################################
   
   MainBucket:
@@ -48,7 +55,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !Sub '${ProjectName}-${Environment}-${AWS::AccountId}'
+      BucketName: !Ref BucketName
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -63,8 +70,6 @@ Resources:
       Tags:
         - Key: Project
           Value: !Ref ProjectName
-        - Key: Environment
-          Value: !Ref Environment
 
   #############################################
   # Security Group
@@ -73,7 +78,7 @@ Resources:
   SageMakerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: !Sub '${ProjectName}-${Environment}-sg'
+      GroupName: !Sub '${ProjectName}-sg'
       GroupDescription: Security group for SageMaker Domain
       VpcId: !Ref VpcId
       SecurityGroupEgress:
@@ -108,7 +113,7 @@ Resources:
           
           # Install project dependencies
           pip install --upgrade pip
-          pip install optuna mlflow 
+          pip install optuna mlflow xgboost
           
           echo "Lifecycle configuration complete!"
       Tags:
@@ -122,7 +127,7 @@ Resources:
   SageMakerExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${ProjectName}-${Environment}-role'
+      RoleName: !Sub '${ProjectName}-execution-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -148,13 +153,13 @@ Resources:
           Value: !Ref ProjectName
 
   #############################################
-  # Space Execution Role (Full Permissions)
+  # Space Execution Role
   #############################################
 
   SpaceExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${ProjectName}-${Environment}-space-role'
+      RoleName: !Sub '${ProjectName}-space-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -196,8 +201,9 @@ Resources:
 
   SageMakerDomain:
     Type: AWS::SageMaker::Domain
+    DependsOn: JupyterLabLifecycleConfig
     Properties:
-      DomainName: !Sub '${ProjectName}-${Environment}'
+      DomainName: !Ref ProjectName
       AuthMode: IAM
       VpcId: !Ref VpcId
       SubnetIds: !Ref SubnetIds
@@ -209,10 +215,20 @@ Resources:
         SharingSettings:
           NotebookOutputOption: Allowed
           S3OutputPath: !Sub 's3://${MainBucket}/sharing'
+        JupyterLabAppSettings:
+          LifecycleConfigArns:
+            - !GetAtt JupyterLabLifecycleConfig.StudioLifecycleConfigArn
+          DefaultResourceSpec:
+            InstanceType: !Ref SpaceInstanceType
+            LifecycleConfigArn: !GetAtt JupyterLabLifecycleConfig.StudioLifecycleConfigArn
       DefaultSpaceSettings:
         ExecutionRole: !GetAtt SageMakerExecutionRole.Arn
         SecurityGroups:
           - !Ref SageMakerSecurityGroup
+        JupyterLabAppSettings:
+          DefaultResourceSpec:
+            InstanceType: !Ref SpaceInstanceType
+            LifecycleConfigArn: !GetAtt JupyterLabLifecycleConfig.StudioLifecycleConfigArn
       DomainSettings:
         DockerSettings:
           EnableDockerAccess: ENABLED
@@ -221,8 +237,6 @@ Resources:
       Tags:
         - Key: Project
           Value: !Ref ProjectName
-        - Key: Environment
-          Value: !Ref Environment
 
   #############################################
   # SageMaker User Profile
@@ -280,16 +294,14 @@ Resources:
     Type: AWS::SageMaker::MlflowTrackingServer
     DependsOn: SageMakerDomain
     Properties:
-      TrackingServerName: !Sub '${ProjectName}-${Environment}-mlflow'
+      TrackingServerName: !Sub '${ProjectName}-mlflow'
       ArtifactStoreUri: !Sub 's3://${MainBucket}/mlflow'
       RoleArn: !GetAtt SageMakerExecutionRole.Arn
-      TrackingServerSize: Small
+      TrackingServerSize: !Ref MLflowServerSize
       AutomaticModelRegistration: true
       Tags:
         - Key: Project
           Value: !Ref ProjectName
-        - Key: Environment
-          Value: !Ref Environment
 
 Outputs:
   DomainId:
@@ -332,10 +344,10 @@ Outputs:
     Description: SageMaker execution role ARN
     Value: !GetAtt SageMakerExecutionRole.Arn
     Export:
-      Name: !Sub '${ProjectName}-SageMakerRoleArn'
+      Name: !Sub '${ProjectName}-ExecutionRoleArn'
 
   SpaceExecutionRoleArn:
-    Description: Space execution role ARN (full S3/ECR permissions)
+    Description: Space execution role ARN
     Value: !GetAtt SpaceExecutionRole.Arn
     Export:
       Name: !Sub '${ProjectName}-SpaceRoleArn'
