@@ -1,0 +1,139 @@
++ TRAINING_OUTPUT_PATH=/opt/ml/output/data
++ TRAINING_FAILURE_PATH=/opt/ml/output/failure
++ SM_EXECUTION_INPUT_PATH=/opt/ml/input/data/sagemaker_headless_execution_pipelinestep
++ SM_EXECUTION_SYSTEM_PATH=/opt/ml/input/data/sagemaker_headless_execution_system
++ export SM_PAPERMILL_INPUT=/opt/ml/input/data/sagemaker_headless_execution_pipelinestep/fm_train.ipynb
++ SM_PAPERMILL_INPUT=/opt/ml/input/data/sagemaker_headless_execution_pipelinestep/fm_train.ipynb
++ mkdir -p /opt/ml/output/data
++ SM_EXEC_STEP='Prepare the input notebook'
++ '[' -f /opt/ml/input/data/sagemaker_headless_execution_pipelinestep/fm_train.ipynb ']'
++ cp /opt/ml/input/data/sagemaker_headless_execution_pipelinestep/fm_train.ipynb /opt/ml/output/data
++ '[' 1.0 '!=' 1.0 ']'
++ SM_EXEC_STEP='detecting python runtime'
++ '[' '!' -z '' ']'
+++ which python
++ PYTHON_EXECUTABLE=/opt/conda/bin/python
++ echo 'Python executable: /opt/conda/bin/python'
+Python executable: /opt/conda/bin/python
+++ /opt/conda/bin/python -c 'import sys; version=sys.version_info[:3]; print("{0}.{1}".format(*version))'
++ DEFAULT_PYTHON_VERSION=3.12
++ '[' true = true ']'
++ echo 'EFS Simulation is skipped.'
+EFS Simulation is skipped.
+++ id -u
++ [[ 1000 -eq 0 ]]
++ sparkmagic_config_file=/etc/sparkmagic/config.json
++ '[' -e /etc/sparkmagic/config.json ']'
++ SM_EXEC_STEP='running LCC script as init-script'
++ cd /opt/ml/input/data/sagemaker_headless_execution_pipelinestep
++ '[' '!' -z '' ']'
++ echo 'No lcc-init-script is specified.'
+No lcc-init-script is specified.
++ SM_EXEC_STEP='running init script'
++ '[' '!' -z nb_job_init.sh ']'
++ . /opt/ml/input/data/sagemaker_headless_execution_pipelinestep/nb_job_init.sh
+++ set -eux
+++ pip install mlflow optuna
+Requirement already satisfied: mlflow in /opt/conda/lib/python3.12/site-packages (2.21.0)
+Requirement already satisfied: optuna in /opt/conda/lib/python3.12/site-packages (4.2.1)
+Requirement already satisfied: Flask<4 in /opt/conda/lib/python3.12/site-packages (from mlflow) (3.1.0)
+Requirement already satisfied: Jinja2<4,>=2.11 in /opt/conda/lib/python3.12/site-packages (from mlflow) (3.1.6)
+Requirement already satisfied: alembic!=1.10.0,<2 in /opt/conda/lib/python3.12/site-packages (from mlflow) (1.15.1)
+Requirement already satisfied: cachetools<6,>=5.0.0 in /opt/conda/lib/python3.12/site-packages (from mlflow) (5.5.2)
+Requirement already satisfied: click<9,>=7.0 in /opt/conda/lib/python3.12/site-packages (from mlflow) (8.1.8)
+Requirement already satisfied: cloudpickle<4 in /opt/conda/lib/python3.12/site-packages (from mlflow) (3.1.1)
+Requirement already satisfied: databricks-sdk<1,>=0.20.0 in /opt/conda/lib/python3.12/site-packages (from mlflow) (0.46.0)
+Requirement already satisfied: docker<8,>=4.0.0 in /opt/conda/lib/python3.12/site-packages (from mlflow) (7.1.0)
+Requirement already satisfied: fastapi<1 in /opt/conda/lib/python3.12/site-packages (from mlflow) (0.115.11)
+Requirement already satisfied: gitpython<4,>=3.1.9 in /opt/conda/lib/python3.12/site-packages (from mlflow) (3.1.44)
+Requirement already satisfied: graphene<4 in /opt/conda/lib/python3.12/site-packages (from mlflow) (3.4.3)
+Requirement already satisfied: gunicorn<24 in /opt/conda/lib/python3.12/site-packages (from mlflow) (23.0.0)
+Requirement already satisfied: importlib_metadata!=4.7.0,<9,>=3.7.0 in /opt/conda/lib/python3.12/site-packages (from mlflow) (6.10.0)
+Requirement already satisfied: markdown<4,>=3.3 in /opt/conda/lib/python3.12/site-packages (from mlflow) (3.6)
+Requirement already satisfied: matplotlib<4 in /opt/conda/lib/python3.12/site-packages (from mlflow) (3.10.1)
+Requirement already satisfied: numpy<3 in /opt/conda/lib/python3.12/site-packages (from mlflow) (1.26.4)
+Requirement already satisfied: opentelemetry-api<3,>=1.9.0 in /opt/conda/lib/python3.12/site-packages (from mlflow) (1.31.0)
+Requirement already satisfied: opentelemetry-sdk<3,>=1.9.0 in /opt/conda/lib/python3.12/site-packages (from mlflow) (1.31.0)
+Requirement already satisfied: packaging<25 in /opt/conda/lib/python3.12/site-packages (from mlflow) (24.2)
+Requirement already satisfied: pandas<3 in /opt/conda/lib/python3.12/site-packages (from mlflow) (2.2.3)
+Requirement already satisfied: protobuf<6,>=3.12.0 in /opt/conda/lib/python3.12/site-packages (from mlflow) (5.28.3)
+Requirement already satisfied: pyarrow<20,>=4.0.0 in /opt/conda/lib/python3.12/site-packages (from mlflow) (19.0.1)
+Requirement already satisfied: pydantic<3,>=1.10.8 in /opt/conda/lib/python3.12/site-packages (from mlflow) (2.10.6)
+Requirement already satisfied: pyyaml<7,>=5.1 in /opt/conda/lib/python3.12/site-packages (from mlflow) (6.0.2)
+Requirement already satisfied: requests<3,>=2.17.3 in /opt/conda/lib/python3.12/site-packages (from mlflow) (2.32.3)
+Requirement already satisfied: scikit-learn<2 in /opt/conda/lib/python3.12/site-packages (from mlflow) (1.5.2)
+Requirement already satisfied: scipy<2 in /opt/conda/lib/python3.12/site-packages (from mlflow) (1.15.2)
+Requirement already satisfied: sqlalchemy<3,>=1.4.0 in /opt/conda/lib/python3.12/site-packages (from mlflow) (2.0.39)
+Requirement already satisfied: sqlparse<1,>=0.4.0 in /opt/conda/lib/python3.12/site-packages (from mlflow) (0.5.3)
+Requirement already satisfied: typing-extensions<5,>=4.0.0 in /opt/conda/lib/python3.12/site-packages (from mlflow) (4.12.2)
+Requirement already satisfied: uvicorn<1 in /opt/conda/lib/python3.12/site-packages (from mlflow) (0.34.0)
+Requirement already satisfied: colorlog in /opt/conda/lib/python3.12/site-packages (from optuna) (6.9.0)
+Requirement already satisfied: tqdm in /opt/conda/lib/python3.12/site-packages (from optuna) (4.67.1)
+Requirement already satisfied: Mako in /opt/conda/lib/python3.12/site-packages (from alembic!=1.10.0,<2->mlflow) (1.3.9)
+Requirement already satisfied: google-auth~=2.0 in /opt/conda/lib/python3.12/site-packages (from databricks-sdk<1,>=0.20.0->mlflow) (2.38.0)
+Requirement already satisfied: urllib3>=1.26.0 in /opt/conda/lib/python3.12/site-packages (from docker<8,>=4.0.0->mlflow) (2.3.0)
+Requirement already satisfied: starlette<0.47.0,>=0.40.0 in /opt/conda/lib/python3.12/site-packages (from fastapi<1->mlflow) (0.46.1)
+Requirement already satisfied: Werkzeug>=3.1 in /opt/conda/lib/python3.12/site-packages (from Flask<4->mlflow) (3.1.3)
+Requirement already satisfied: itsdangerous>=2.2 in /opt/conda/lib/python3.12/site-packages (from Flask<4->mlflow) (2.2.0)
+Requirement already satisfied: blinker>=1.9 in /opt/conda/lib/python3.12/site-packages (from Flask<4->mlflow) (1.9.0)
+Requirement already satisfied: gitdb<5,>=4.0.1 in /opt/conda/lib/python3.12/site-packages (from gitpython<4,>=3.1.9->mlflow) (4.0.12)
+Requirement already satisfied: graphql-core<3.3,>=3.1 in /opt/conda/lib/python3.12/site-packages (from graphene<4->mlflow) (3.2.6)
+Requirement already satisfied: graphql-relay<3.3,>=3.1 in /opt/conda/lib/python3.12/site-packages (from graphene<4->mlflow) (3.2.0)
+Requirement already satisfied: python-dateutil<3,>=2.7.0 in /opt/conda/lib/python3.12/site-packages (from graphene<4->mlflow) (2.9.0.post0)
+Requirement already satisfied: zipp>=0.5 in /opt/conda/lib/python3.12/site-packages (from importlib_metadata!=4.7.0,<9,>=3.7.0->mlflow) (3.21.0)
+Requirement already satisfied: MarkupSafe>=2.0 in /opt/conda/lib/python3.12/site-packages (from Jinja2<4,>=2.11->mlflow) (3.0.2)
+Requirement already satisfied: contourpy>=1.0.1 in /opt/conda/lib/python3.12/site-packages (from matplotlib<4->mlflow) (1.3.1)
+Requirement already satisfied: cycler>=0.10 in /opt/conda/lib/python3.12/site-packages (from matplotlib<4->mlflow) (0.12.1)
+Requirement already satisfied: fonttools>=4.22.0 in /opt/conda/lib/python3.12/site-packages (from matplotlib<4->mlflow) (4.56.0)
+Requirement already satisfied: kiwisolver>=1.3.1 in /opt/conda/lib/python3.12/site-packages (from matplotlib<4->mlflow) (1.4.8)
+Requirement already satisfied: pillow>=8 in /opt/conda/lib/python3.12/site-packages (from matplotlib<4->mlflow) (11.1.0)
+Requirement already satisfied: pyparsing>=2.3.1 in /opt/conda/lib/python3.12/site-packages (from matplotlib<4->mlflow) (3.2.1)
+Requirement already satisfied: deprecated>=1.2.6 in /opt/conda/lib/python3.12/site-packages (from opentelemetry-api<3,>=1.9.0->mlflow) (1.2.18)
+Requirement already satisfied: opentelemetry-semantic-conventions==0.52b0 in /opt/conda/lib/python3.12/site-packages (from opentelemetry-sdk<3,>=1.9.0->mlflow) (0.52b0)
+Requirement already satisfied: pytz>=2020.1 in /opt/conda/lib/python3.12/site-packages (from pandas<3->mlflow) (2024.1)
+Requirement already satisfied: tzdata>=2022.7 in /opt/conda/lib/python3.12/site-packages (from pandas<3->mlflow) (2025.1)
+Requirement already satisfied: annotated-types>=0.6.0 in /opt/conda/lib/python3.12/site-packages (from pydantic<3,>=1.10.8->mlflow) (0.7.0)
+Requirement already satisfied: pydantic-core==2.27.2 in /opt/conda/lib/python3.12/site-packages (from pydantic<3,>=1.10.8->mlflow) (2.27.2)
+Requirement already satisfied: charset_normalizer<4,>=2 in /opt/conda/lib/python3.12/site-packages (from requests<3,>=2.17.3->mlflow) (3.4.1)
+Requirement already satisfied: idna<4,>=2.5 in /opt/conda/lib/python3.12/site-packages (from requests<3,>=2.17.3->mlflow) (3.10)
+Requirement already satisfied: certifi>=2017.4.17 in /opt/conda/lib/python3.12/site-packages (from requests<3,>=2.17.3->mlflow) (2025.1.31)
+Requirement already satisfied: joblib>=1.2.0 in /opt/conda/lib/python3.12/site-packages (from scikit-learn<2->mlflow) (1.4.2)
+Requirement already satisfied: threadpoolctl>=3.1.0 in /opt/conda/lib/python3.12/site-packages (from scikit-learn<2->mlflow) (3.6.0)
+Requirement already satisfied: greenlet!=0.4.17 in /opt/conda/lib/python3.12/site-packages (from sqlalchemy<3,>=1.4.0->mlflow) (3.1.1)
+Requirement already satisfied: h11>=0.8 in /opt/conda/lib/python3.12/site-packages (from uvicorn<1->mlflow) (0.14.0)
+Requirement already satisfied: wrapt<2,>=1.10 in /opt/conda/lib/python3.12/site-packages (from deprecated>=1.2.6->opentelemetry-api<3,>=1.9.0->mlflow) (1.17.2)
+Requirement already satisfied: smmap<6,>=3.0.1 in /opt/conda/lib/python3.12/site-packages (from gitdb<5,>=4.0.1->gitpython<4,>=3.1.9->mlflow) (5.0.2)
+Requirement already satisfied: pyasn1-modules>=0.2.1 in /opt/conda/lib/python3.12/site-packages (from google-auth~=2.0->databricks-sdk<1,>=0.20.0->mlflow) (0.4.1)
+Requirement already satisfied: rsa<5,>=3.1.4 in /opt/conda/lib/python3.12/site-packages (from google-auth~=2.0->databricks-sdk<1,>=0.20.0->mlflow) (4.9)
+Requirement already satisfied: six>=1.5 in /opt/conda/lib/python3.12/site-packages (from python-dateutil<3,>=2.7.0->graphene<4->mlflow) (1.17.0)
+Requirement already satisfied: anyio<5,>=3.6.2 in /opt/conda/lib/python3.12/site-packages (from starlette<0.47.0,>=0.40.0->fastapi<1->mlflow) (4.9.0)
+Requirement already satisfied: sniffio>=1.1 in /opt/conda/lib/python3.12/site-packages (from anyio<5,>=3.6.2->starlette<0.47.0,>=0.40.0->fastapi<1->mlflow) (1.3.1)
+Requirement already satisfied: pyasn1<0.7.0,>=0.4.6 in /opt/conda/lib/python3.12/site-packages (from pyasn1-modules>=0.2.1->google-auth~=2.0->databricks-sdk<1,>=0.20.0->mlflow) (0.6.1)
++ SM_EXEC_STEP='executing notebook'
++ export SM_PAPERMILL_PARAMS_PATH=/opt/ml/input/config/hyperparameters.json
++ SM_PAPERMILL_PARAMS_PATH=/opt/ml/input/config/hyperparameters.json
++ export SM_PAPERMILL_OUTPUT=/opt/ml/output/data/electronics-train-accessories.ipynb
++ SM_PAPERMILL_OUTPUT=/opt/ml/output/data/electronics-train-accessories.ipynb
++ export SM_PAPERMILL_FAILURE_FILE=/opt/ml/output/failure
++ SM_PAPERMILL_FAILURE_FILE=/opt/ml/output/failure
+++ echo /opt/ml/output/data/electronics-train-accessories.ipynb
+++ sed 's|\.|-|g; s|:|-|g; s|-*ipynb$|.ipynb|g;'
++ export SM_PAPERMILL_OUTPUT=/opt/ml/output/data/electronics-train-accessories.ipynb
++ SM_PAPERMILL_OUTPUT=/opt/ml/output/data/electronics-train-accessories.ipynb
++ papermill_process=25
++ wait 25
++ /opt/conda/bin/python -m sagemaker_headless_execution_driver.notebookrunner
+Use Kernel python3 to execute fm_train.ipynb with output to /opt/ml/output/data/electronics-train-accessories.ipynb. Params: {'category': '["accessories"]', 'experiment_name': 'electronics-accessories', 'n_trials': '50', 'test_size': '0.25'}
+Executing:   0%|          | 0/23 [00:00<?, ?cell/s]Executing:   4%|▍         | 1/23 [00:01<00:22,  1.00s/cell]Executing:   9%|▊         | 2/23 [00:03<00:40,  1.92s/cell]Executing:  35%|███▍      | 8/23 [00:03<00:05,  2.73cell/s]Executing:  43%|████▎     | 10/23 [00:04<00:03,  3.52cell/s]Executing:  52%|█████▏    | 12/23 [00:04<00:03,  3.47cell/s]Executing:  74%|███████▍  | 17/23 [01:29<00:52,  8.77s/cell]Executing:  83%|████████▎ | 19/23 [01:30<00:27,  6.89s/cell]Executing:  87%|████████▋ | 20/23 [01:31<00:18,  6.07s/cell]Executing:  91%|█████████▏| 21/23 [01:32<00:10,  5.17s/cell]Executing:  96%|█████████▌| 22/23 [01:32<00:04,  4.35s/cell]Executing: 100%|██████████| 23/23 [01:33<00:00,  3.56s/cell]Executing: 100%|██████████| 23/23 [01:34<00:00,  4.12s/cell]
+Execution complete
+Output notebook was generated
++ echo 'Papermill process complete, saving notebook output in the following formats: '
+Papermill process complete, saving notebook output in the following formats: 
++ save_papermill_output_as_formats
++ '[' -f /opt/ml/output/data/electronics-train-accessories.ipynb ']'
++ export_formats=("$@")
++ echo 'Notebook execution is complete'
+Notebook execution is complete
++ exit_code=0
++ exit_hook 0
++ set +x
